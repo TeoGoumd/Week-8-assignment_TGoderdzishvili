@@ -1,0 +1,150 @@
+---
+title: "Teos assignment_1019"
+output: html_document
+date: "2024-10-19"
+---
+
+
+
+```{r}
+install.packages("tidytext")
+```
+
+```{r}
+library(tidyr) 
+library(readr)
+
+```
+
+
+```{r}
+library(dplyr)
+library(tidytext)
+
+
+```
+
+#Import the data
+```{r}
+
+ChinaFDI_LAT_tidy <- read_csv("https://raw.githubusercontent.com/wellsdata/CompText_Jour/main/data/ChinaFDI-LAT_tidy.csv")
+
+```
+
+
+#Use code to count the number of unique articles in the dataset
+```{r}
+library(dplyr)
+
+unique_articles_count <- ChinaFDI_LAT_tidy %>%
+ distinct(article_nmbr) %>%
+  count()
+
+```
+
+#Remove useless metadata such as "Los Angeles Times" and "ISSN"
+```{r}
+patterns_to_remove <- c("Title", "Pages", "Publication date", "Publication subject","ISSN", "Language of publication: English", "Document URL", "Copyright", "Last updated", "Database", "STARTOFARTICLE", "ProQuest document ID","Classification", "https", "--", "People", "Publication info", "Illustration Caption","Identifier /keyword", "Twitter", "[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}")
+
+# Filtering the rows where the 'text' column does NOT start with any of the specified patterns
+
+Remove_metadata <- ChinaFDI_LAT_tidy %>%
+  filter(!grepl(paste0("^(", paste(patterns_to_remove, collapse="|"), ")"), text))
+
+```
+
+
+#Tokenize the data, remove stop words, remove the phrase "los angeles," and create a dataframe of one word per row
+```{r}
+# Tokenize the data 
+ChinaFDI_tokenized <- Remove_metadata %>%
+  unnest_tokens(word, text)
+
+# Remove stop words
+ChinaFDI_clean <- ChinaFDI_tokenized %>%
+  anti_join(stop_words, by = "word")
+
+# Remove the phrase "los angeles"
+ChinaFDI_clean <- ChinaFDI_clean %>%
+  filter(!str_detect(word, "los angeles")) 
+
+```
+
+#Generate a list of the top 20 bigrams
+```{r}
+# To create bigrams 
+ChinaFDI_bigrams <- ChinaFDI_LAT_tidy %>%
+  unnest_tokens(bigram, text, token="ngrams", n=2)
+
+# Count the frequency of bigrams
+ChinaFDI_bigrams_count <- ChinaFDI_bigrams %>%
+  count(bigram, sort = TRUE)
+
+# Top 20 most frequent bigrams
+top_20 <- ChinaFDI_bigrams_count %>%
+  top_n(20)
+
+
+```
+
+#Create a ggplot chart showing the top 20 bigrams
+```{r}
+library(ggplot2) 
+
+plot <- ggplot(top_20, aes(x = reorder(bigram, n), y = n)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  coord_flip() +  
+  labs(title = "Top 20 Bigrams",
+       x = "Bigrams",
+       y = "Frequency") +
+  theme_minimal()
+
+# Display the plot
+print(plot)
+
+```
+
+```{r}
+install.packages("lexicon")
+install.packages("textdata")
+```
+
+
+#Run a sentiment analysis using the Afinn lexicon
+```{r}
+
+# Load the AFINN lexicon
+afinn <- get_sentiments("afinn")
+
+# Sentiment analysis by joining the tokenized words with the AFINN lexicon
+sentiment_analysis <- ChinaFDI_tokenized %>%
+  inner_join(afinn, by = "word") %>%
+  group_by(id = row_number()) %>%  
+  summarize(sentiment = sum(value), .groups = "drop")
+
+# a column for sentiment type (Positive or Negative)
+sentiment_analysis <- sentiment_analysis %>%
+  mutate(sentiment_type = ifelse(sentiment >= 0, "Positive", "Negative"))
+
+# Visualize the sentiment scores
+ggplot(sentiment_analysis, aes(x = id, y = sentiment, fill = sentiment_type)) +
+  geom_col() +
+  scale_fill_manual(values = c("Positive" = "steelblue", "Negative" = "Yellow")) + 
+  labs(title = "Sentiment Analysis Using AFINN Lexicon",
+       x = "Document ID",
+       y = "Sentiment Score") +
+  theme_minimal()
+
+```
+
+#At the bottom of the R markdown document, write a 250 word memo describing your key findings. Describe any problems you encountered in this process.
+
+At the bottom of the R markdown document, write a 250 word memo describing your key findings. Describe any problems you encountered in this process.
+
+Working on this exercise was extremely challenging because of the technical difficulties. I have been trying to run RStudio on my laptop ever since Thursday,  I tried restarting Windows, shutting it down, etc. when I try to open it all I get is either a white screen or R symbol in the center of my screen. Unfortunately, for the last couple of days, instead of working on an assignment, I was trying to solve the technical issues. Finally, I borrowed my husband's laptop and did everything from the very beginning and luckily, I had my study buddies as well so I could catch up. For a while, I will be able to borrow the laptop from the library, so I don’t expect this kind of challenge to have for the next couple of weeks. 
+
+RStudio could not load the assignment file, even though I stored and indicated everything properly. After several attempts, I figured I could use the link instead of the downloaded file for the very first question and it worked successfully. 
+
+This assignment file was uniting 1,234 articles, about China’s Foreign Direct Investment, among which 36 were unique articles. 
+
+The most interesting part was to run a sentiment analysis using the Afinn lexicon. It took me a while to figure out that I needed to install the packages, but it was part of the learning process and now I know. 
